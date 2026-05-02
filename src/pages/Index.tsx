@@ -22,7 +22,7 @@ export default function Index() {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-accent/5" />
         <div className="container relative py-24 text-center">
           <div className="inline-flex items-center gap-2 gradient-primary text-primary-foreground px-4 py-1.5 rounded-full text-sm font-medium mb-6 glow-primary animate-fade-in">
-            <Shield className="h-4 w-4" /> AI-Powered Proctoring
+            <Shield className="h-4 w-4" /> AI-Powered ExamEye
           </div>
           <h1 className="text-5xl md:text-7xl font-extrabold text-foreground mb-6 animate-fade-in tracking-tight">
             Secure Online<br />Exam Proctoring
@@ -69,7 +69,7 @@ export default function Index() {
       {/* Footer */}
       <footer className="border-t border-border py-8">
         <div className="container text-center text-sm text-muted-foreground">
-          <p>&copy; 2026 ProctorAI. AI-Powered Exam Proctoring Platform.</p>
+          <p>&copy; 2026 ExamAI. AI-Powered Exam Proctoring Platform.</p>
         </div>
       </footer>
     </div>
