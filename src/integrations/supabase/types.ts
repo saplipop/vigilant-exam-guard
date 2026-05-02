@@ -14,16 +14,222 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      exam_sessions: {
+        Row: {
+          answers: Json | null
+          completed_at: string | null
+          created_at: string
+          exam_id: string
+          id: string
+          risk_score: number
+          score: number | null
+          started_at: string | null
+          status: string
+          student_id: string
+        }
+        Insert: {
+          answers?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          exam_id: string
+          id?: string
+          risk_score?: number
+          score?: number | null
+          started_at?: string | null
+          status?: string
+          student_id: string
+        }
+        Update: {
+          answers?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          exam_id?: string
+          id?: string
+          risk_score?: number
+          score?: number | null
+          started_at?: string | null
+          status?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_sessions_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exams: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration_minutes: number
+          id: string
+          is_active: boolean
+          passing_marks: number
+          title: string
+          total_marks: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          is_active?: boolean
+          passing_marks?: number
+          title: string
+          total_marks?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          is_active?: boolean
+          passing_marks?: number
+          title?: string
+          total_marks?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      questions: {
+        Row: {
+          correct_answer: string | null
+          exam_id: string
+          id: string
+          marks: number
+          options: Json | null
+          order_num: number
+          question_text: string
+          question_type: string
+        }
+        Insert: {
+          correct_answer?: string | null
+          exam_id: string
+          id?: string
+          marks?: number
+          options?: Json | null
+          order_num?: number
+          question_text: string
+          question_type?: string
+        }
+        Update: {
+          correct_answer?: string | null
+          exam_id?: string
+          id?: string
+          marks?: number
+          options?: Json | null
+          order_num?: number
+          question_text?: string
+          question_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questions_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      violations: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          session_id: string
+          severity: number
+          violation_type: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          session_id: string
+          severity?: number
+          violation_type: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          session_id?: string
+          severity?: number
+          violation_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "violations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "exam_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "student" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +356,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["student", "admin"],
+    },
   },
 } as const
