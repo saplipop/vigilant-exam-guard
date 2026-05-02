@@ -156,7 +156,7 @@ export default function ExamRoom() {
 
   if (terminated) {
     return (
-      <div className="dark min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="glass-card max-w-md text-center p-8">
           <AlertTriangle className="h-16 w-16 text-destructive mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-foreground mb-2">Exam Terminated</h2>
@@ -168,10 +168,10 @@ export default function ExamRoom() {
     );
   }
 
-  if (!exam || !q) return <div className="dark min-h-screen bg-background flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
+  if (!exam || !q) return <div className="min-h-screen bg-background flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
 
   return (
-    <div className="dark min-h-screen bg-background select-none">
+    <div className="min-h-screen bg-background select-none">
       {/* Warning Modal */}
       {showWarning && (
         <div className="fixed inset-0 z-50 bg-background/80 flex items-center justify-center p-4">

@@ -33,7 +33,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="dark min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
       <header className="border-b border-border glass-card sticky top-0 z-50">
         <div className="container flex items-center justify-between h-16">
           <div className="flex items-center gap-3">
