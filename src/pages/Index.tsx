@@ -28,7 +28,7 @@ export default function Index() {
             Secure Online<br />Exam Proctoring
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8 animate-fade-in">
-            Advanced AI-based cheating detection with real-time monitoring, face tracking, audio analysis, and automated risk scoring. Ensure exam integrity with ProctorAI.
+            Advanced AI-based cheating detection with real-time monitoring, face tracking, audio analysis, and automated risk scoring. Ensure exam integrity with ExamEye.
           </p>
           <div className="flex gap-4 justify-center animate-fade-in">
             <Button size="lg" className="gradient-primary text-primary-foreground glow-primary text-base px-8" onClick={() => navigate("/auth")}>

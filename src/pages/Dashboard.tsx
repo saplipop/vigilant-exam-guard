@@ -40,7 +40,7 @@ export default function Dashboard() {
             <div className="gradient-primary p-2 rounded-lg">
               <Shield className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="font-bold text-lg text-foreground">ProctorAI</span>
+            <span className="font-bold text-lg text-foreground">ExamEye</span>
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">{profile?.full_name || profile?.email}</span>

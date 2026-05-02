@@ -50,7 +50,7 @@ export default function Auth() {
             <Shield className="h-8 w-8 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">ProctorAI</h1>
+            <h1 className="text-2xl font-bold text-foreground">ExamEye</h1>
             <p className="text-sm text-muted-foreground">Secure Exam Platform</p>
           </div>
         </div>
