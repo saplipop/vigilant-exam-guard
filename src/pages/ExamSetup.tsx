@@ -53,7 +53,7 @@ export default function ExamSetup() {
   };
 
   return (
-    <div className="dark min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-2xl animate-fade-in">
         <div className="flex items-center gap-3 mb-8">
           <div className="gradient-primary p-3 rounded-xl glow-primary"><Shield className="h-6 w-6 text-primary-foreground" /></div>

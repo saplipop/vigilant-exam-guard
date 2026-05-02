@@ -43,7 +43,7 @@ export default function Auth() {
   };
 
   return (
-    <div className="dark min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md animate-fade-in">
         <div className="flex items-center justify-center gap-3 mb-8">
           <div className="gradient-primary p-3 rounded-xl glow-primary">

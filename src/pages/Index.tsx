@@ -16,7 +16,7 @@ export default function Index() {
   }, [user, loading, role]);
 
   return (
-    <div className="dark min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
       {/* Hero */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-accent/5" />

@@ -72,7 +72,7 @@ export default function AdminDashboard() {
   const riskColor = (score: number) => score > 70 ? "text-destructive" : score > 40 ? "text-warning" : "text-accent";
 
   return (
-    <div className="dark min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
       <header className="border-b border-border glass-card sticky top-0 z-50">
         <div className="container flex items-center justify-between h-16">
           <div className="flex items-center gap-3">
