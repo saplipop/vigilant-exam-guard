@@ -32,9 +32,6 @@ export default function Index() {
           </p>
           <div className="flex gap-4 justify-center animate-fade-in">
             <Button size="lg" className="gradient-primary text-primary-foreground glow-primary text-base px-8" onClick={() => navigate("/auth")}>
-              Get Started
-            </Button>
-            <Button size="lg" variant="outline" className="text-base px-8" onClick={() => navigate("/auth")}>
               Sign In
             </Button>
           </div>
