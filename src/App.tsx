@@ -11,6 +11,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import ExamSetup from "./pages/ExamSetup";
 import ExamRoom from "./pages/ExamRoom";
+import ExamResult from "./pages/ExamResult";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -39,6 +40,7 @@ const App = () => (
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/exam-setup/:examId" element={<ProtectedRoute><ExamSetup /></ProtectedRoute>} />
               <Route path="/exam/:examId" element={<ProtectedRoute><ExamRoom /></ProtectedRoute>} />
+              <Route path="/result/:sessionId" element={<ProtectedRoute><ExamResult /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
