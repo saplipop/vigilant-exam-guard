@@ -8,10 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, Clock, ChevronLeft, ChevronRight, Send, Camera, Shield } from "lucide-react";
+import { AlertTriangle, Clock, ChevronLeft, ChevronRight, Send, Camera, Shield, Lock } from "lucide-react";
 import {
   Violation, setupTabSwitchDetection, setupCopyPastePrevention,
-  setupAudioMonitoring, setupFaceDetection, setupFullscreenDetection,
+  setupAudioMonitoring, setupFaceMeshDetection, setupFullscreenDetection,
   requestFullscreen,
 } from "@/lib/cheatingDetection";
 
@@ -20,6 +20,7 @@ interface Question {
   question_text: string;
   question_type: string;
   options: string[] | null;
+  correct_answer: string | null;
   marks: number;
   order_num: number;
 }
@@ -30,6 +31,8 @@ interface Exam {
   duration_minutes: number;
   total_marks: number;
 }
+
+const MAX_WARNINGS = 3;
 
 export default function ExamRoom() {
   const { examId } = useParams();
@@ -43,14 +46,17 @@ export default function ExamRoom() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = useState(0);
   const [riskScore, setRiskScore] = useState(0);
+  const [warningCount, setWarningCount] = useState(0);
   const [violations, setViolations] = useState<Violation[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [showWarning, setShowWarning] = useState(false);
+  const [currentWarningMsg, setCurrentWarningMsg] = useState("");
   const [terminated, setTerminated] = useState(false);
+  const [locked, setLocked] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-
-  const RISK_THRESHOLD = 100;
+  const warningCountRef = useRef(0);
+  const riskScoreRef = useRef(0);
 
   useEffect(() => {
     loadExam();
@@ -67,11 +73,10 @@ export default function ExamRoom() {
       setupFullscreenDetection(handleViolation),
     ];
 
-    // Setup camera
     navigator.mediaDevices.getUserMedia({ video: true }).then(s => {
       streamRef.current = s;
       if (videoRef.current) videoRef.current.srcObject = s;
-      cleanups.push(setupFaceDetection(videoRef.current!, handleViolation));
+      cleanups.push(setupFaceMeshDetection(videoRef.current!, handleViolation));
     });
 
     return () => { cleanups.forEach(c => c()); streamRef.current?.getTracks().forEach(t => t.stop()); };
@@ -98,7 +103,6 @@ export default function ExamRoom() {
     }
     if (qRes.data) setQuestions(qRes.data.map(q => ({ ...q, options: q.options ? (q.options as any) : null })));
 
-    // Create session
     const { data: session } = await supabase.from("exam_sessions")
       .insert({ exam_id: examId, student_id: user.id, status: "in_progress", started_at: new Date().toISOString() })
       .select().single();
@@ -107,62 +111,73 @@ export default function ExamRoom() {
 
   const handleViolation = useCallback((v: Violation) => {
     setViolations(prev => [...prev, v]);
-    setRiskScore(prev => {
-      const newScore = prev + v.severity;
-      if (newScore >= RISK_THRESHOLD) {
+
+    const newRisk = riskScoreRef.current + v.severity;
+    riskScoreRef.current = newRisk;
+    setRiskScore(newRisk);
+
+    // Significant violations trigger a warning
+    const significantTypes = ["tab_switch", "face_not_detected", "multiple_faces", "looking_away", "looking_left", "looking_right", "looking_down", "fullscreen_exit", "noise_detected"];
+    if (significantTypes.includes(v.type)) {
+      const newWarnings = warningCountRef.current + 1;
+      warningCountRef.current = newWarnings;
+      setWarningCount(newWarnings);
+
+      if (newWarnings >= MAX_WARNINGS) {
         setTerminated(true);
+        setLocked(true);
         submitExam(true);
-      } else if (newScore >= RISK_THRESHOLD * 0.7) {
+      } else {
+        setCurrentWarningMsg(v.description);
         setShowWarning(true);
       }
-      return newScore;
-    });
+    }
 
     // Log to database
     if (sessionId) {
       supabase.from("violations").insert({ session_id: sessionId, violation_type: v.type, severity: v.severity, description: v.description });
-      supabase.from("exam_sessions").update({ risk_score: riskScore + v.severity }).eq("id", sessionId);
+      supabase.from("exam_sessions").update({ risk_score: newRisk, warnings_count: warningCountRef.current }).eq("id", sessionId);
     }
-
-    toast({
-      title: "⚠️ Violation Detected",
-      description: v.description,
-      variant: "destructive",
-    });
-  }, [sessionId, riskScore]);
+  }, [sessionId]);
 
   async function submitExam(auto = false) {
-    if (!sessionId) return;
+    if (!sessionId || !questions.length) return;
     streamRef.current?.getTracks().forEach(t => t.stop());
     document.exitFullscreen?.().catch(() => {});
+
+    // Auto-grade MCQs
+    let score = 0;
+    for (const q of questions) {
+      if (q.question_type === "mcq" && q.correct_answer && answers[q.id] === q.correct_answer) {
+        score += q.marks;
+      }
+    }
 
     await supabase.from("exam_sessions").update({
       status: auto ? "terminated" : "completed",
       completed_at: new Date().toISOString(),
       answers,
-      risk_score: riskScore,
+      risk_score: riskScoreRef.current,
+      warnings_count: warningCountRef.current,
+      score,
     }).eq("id", sessionId);
 
-    navigate("/dashboard");
-    toast({
-      title: auto ? "Exam Terminated" : "Exam Submitted",
-      description: auto ? "Your exam was auto-submitted due to excessive violations." : "Your exam has been submitted successfully.",
-      variant: auto ? "destructive" : "default",
-    });
+    navigate(`/result/${sessionId}`);
   }
 
   const formatTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
   const q = questions[currentQ];
 
-  if (terminated) {
+  if (locked) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="glass-card max-w-md text-center p-8">
-          <AlertTriangle className="h-16 w-16 text-destructive mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-foreground mb-2">Exam Terminated</h2>
-          <p className="text-muted-foreground mb-4">Your exam has been automatically terminated due to excessive suspicious activity.</p>
-          <p className="text-lg font-semibold text-destructive mb-6">Risk Score: {riskScore}</p>
-          <Button onClick={() => navigate("/dashboard")} className="gradient-primary text-primary-foreground">Return to Dashboard</Button>
+        <Card className="glass-card max-w-md text-center p-8 animate-shake">
+          <Lock className="h-16 w-16 text-destructive mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-foreground mb-2">Exam Locked</h2>
+          <p className="text-muted-foreground mb-4">Your exam has been terminated after 3 warnings due to suspicious activity.</p>
+          <p className="text-lg font-semibold text-destructive mb-2">Warnings: {warningCount}/{MAX_WARNINGS}</p>
+          <p className="text-sm text-muted-foreground mb-6">Cheating Score: {riskScore}</p>
+          <Button onClick={() => navigate(`/result/${sessionId}`)} className="gradient-primary text-primary-foreground">View Result</Button>
         </Card>
       </div>
     );
@@ -174,13 +189,15 @@ export default function ExamRoom() {
     <div className="min-h-screen bg-background select-none">
       {/* Warning Modal */}
       {showWarning && (
-        <div className="fixed inset-0 z-50 bg-background/80 flex items-center justify-center p-4">
-          <Card className="glass-card max-w-md border-destructive animate-scale-in">
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <Card className="glass-card max-w-md border-destructive animate-shake">
             <CardContent className="p-6 text-center">
-              <AlertTriangle className="h-12 w-12 text-warning mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-foreground mb-2">Warning!</h3>
-              <p className="text-muted-foreground mb-2">Multiple violations have been detected. Continued suspicious behavior will result in automatic exam termination.</p>
-              <p className="text-lg font-semibold text-warning mb-4">Current Risk Score: {riskScore}/{RISK_THRESHOLD}</p>
+              <AlertTriangle className="h-12 w-12 text-warning mx-auto mb-4 animate-pulse" />
+              <h3 className="text-xl font-bold text-foreground mb-2">⚠️ Warning {warningCount}/{MAX_WARNINGS}</h3>
+              <p className="text-muted-foreground mb-2">{currentWarningMsg}</p>
+              <p className="text-sm text-destructive font-semibold mb-4">
+                {MAX_WARNINGS - warningCount} warning{MAX_WARNINGS - warningCount !== 1 ? "s" : ""} remaining before auto-termination
+              </p>
               <Button onClick={() => { setShowWarning(false); requestFullscreen(); }} className="gradient-primary text-primary-foreground">
                 I Understand, Continue Exam
               </Button>
@@ -196,6 +213,9 @@ export default function ExamRoom() {
           <span className="font-semibold text-foreground text-sm">{exam.title}</span>
         </div>
         <div className="flex items-center gap-4">
+          <Badge variant={warningCount >= 2 ? "destructive" : "secondary"} className="text-xs">
+            ⚠️ {warningCount}/{MAX_WARNINGS}
+          </Badge>
           <Badge variant={riskScore > 50 ? "destructive" : "secondary"} className="text-xs">
             Risk: {riskScore}
           </Badge>
@@ -210,9 +230,13 @@ export default function ExamRoom() {
         </div>
       </div>
 
-      {/* Risk Score Bar */}
+      {/* Cheating Score Bar */}
       <div className="px-4 py-1 bg-muted/50">
-        <Progress value={(riskScore / RISK_THRESHOLD) * 100} className="h-1" />
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-muted-foreground">Cheating Score</span>
+          <Progress value={Math.min(riskScore, 100)} className="h-1.5 flex-1" />
+          <span className="text-[10px] font-mono text-muted-foreground">{riskScore}%</span>
+        </div>
       </div>
 
       {/* Main Content */}

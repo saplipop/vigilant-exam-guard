@@ -9,10 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Shield, Eye, EyeOff, Loader2 } from "lucide-react";
 
 export default function Auth() {
-  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -22,19 +20,9 @@ export default function Auth() {
     e.preventDefault();
     setLoading(true);
     try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { data: { full_name: fullName }, emailRedirectTo: window.location.origin },
-        });
-        if (error) throw error;
-        toast({ title: "Check your email", description: "We sent you a confirmation link." });
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        navigate("/dashboard");
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      navigate("/dashboard");
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -57,17 +45,11 @@ export default function Auth() {
 
         <Card className="glass-card">
           <CardHeader className="text-center">
-            <CardTitle className="text-xl">{isSignUp ? "Create Account" : "Welcome Back"}</CardTitle>
-            <CardDescription>{isSignUp ? "Sign up to start taking exams" : "Sign in to continue"}</CardDescription>
+            <CardTitle className="text-xl">Welcome Back</CardTitle>
+            <CardDescription>Sign in with your credentials</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {isSignUp && (
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="John Doe" required />
-                </div>
-              )}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required />
@@ -83,14 +65,12 @@ export default function Auth() {
               </div>
               <Button type="submit" className="w-full gradient-primary text-primary-foreground" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isSignUp ? "Create Account" : "Sign In"}
+                Sign In
               </Button>
             </form>
-            <div className="mt-4 text-center">
-              <button onClick={() => setIsSignUp(!isSignUp)} className="text-sm text-primary hover:underline">
-                {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
-              </button>
-            </div>
+            <p className="mt-4 text-center text-xs text-muted-foreground">
+              Contact your administrator if you don't have credentials.
+            </p>
           </CardContent>
         </Card>
       </div>

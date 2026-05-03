@@ -9,7 +9,10 @@ export const VIOLATION_SCORES: Record<string, number> = {
   tab_switch: 10,
   face_not_detected: 15,
   multiple_faces: 25,
-  looking_away: 5,
+  looking_away: 8,
+  looking_left: 8,
+  looking_right: 8,
+  looking_down: 8,
   noise_detected: 10,
   copy_paste: 5,
   right_click: 3,
@@ -78,73 +81,195 @@ export function setupAudioMonitoring(onViolation: (v: Violation) => void) {
   return () => { cancelAnimationFrame(animFrame); ctx?.close(); };
 }
 
-// Simple face detection using canvas brightness analysis
-export function setupFaceDetection(video: HTMLVideoElement, onViolation: (v: Violation) => void) {
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d")!;
+// MediaPipe Face Mesh based eye/gaze detection
+export function setupFaceMeshDetection(video: HTMLVideoElement, onViolation: (v: Violation) => void) {
   let lastAlert = 0;
   let noFaceCount = 0;
+  let running = true;
 
-  const interval = setInterval(() => {
-    if (video.readyState < 2) return;
-    canvas.width = 320;
-    canvas.height = 240;
-    ctx.drawImage(video, 0, 0, 320, 240);
-    const imageData = ctx.getImageData(0, 0, 320, 240);
-    const data = imageData.data;
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d")!;
 
-    // Simple skin color detection in center region
-    let skinPixels = 0;
-    const totalPixels = 80 * 60;
-    const startX = 120, startY = 60, endX = 200, endY = 120;
+  // Use simple skin-color + head position detection as fallback
+  // MediaPipe CDN loaded asynchronously
+  let faceMeshReady = false;
+  let faceMesh: any = null;
 
-    for (let y = startY; y < endY; y++) {
-      for (let x = startX; x < endX; x++) {
-        const i = (y * 320 + x) * 4;
-        const r = data[i], g = data[i + 1], b = data[i + 2];
-        if (r > 95 && g > 40 && b > 20 && r > g && r > b && Math.abs(r - g) > 15 && r - b > 15) {
-          skinPixels++;
-        }
-      }
+  // Try to load MediaPipe Face Mesh from CDN
+  const loadMediaPipe = async () => {
+    try {
+      // Dynamically load MediaPipe scripts
+      const loadScript = (src: string) => new Promise<void>((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+        const s = document.createElement("script");
+        s.src = src;
+        s.onload = () => resolve();
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+
+      await loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js");
+      await loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js");
+
+      const FaceMesh = (window as any).FaceMesh;
+      if (!FaceMesh) return;
+
+      faceMesh = new FaceMesh({
+        locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
+      });
+
+      faceMesh.setOptions({
+        maxNumFaces: 2,
+        refineLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+      });
+
+      faceMesh.onResults((results: any) => {
+        if (!running) return;
+        processResults(results);
+      });
+
+      faceMeshReady = true;
+      startDetection();
+    } catch {
+      // Fallback to canvas-based detection
+      startFallbackDetection();
     }
+  };
 
-    const skinRatio = skinPixels / totalPixels;
+  const processResults = (results: any) => {
+    const now = Date.now();
+    if (now - lastAlert < 3000) return;
 
-    if (skinRatio < 0.05) {
+    if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
       noFaceCount++;
-      if (noFaceCount > 5 && Date.now() - lastAlert > 10000) {
-        lastAlert = Date.now();
+      if (noFaceCount > 5) {
+        lastAlert = now;
         noFaceCount = 0;
         onViolation({ type: "face_not_detected", severity: VIOLATION_SCORES.face_not_detected, description: "No face detected in camera frame", timestamp: new Date() });
       }
-    } else {
-      noFaceCount = 0;
+      return;
     }
 
-    // Check if face is off-center (looking away)
-    if (skinRatio > 0.05) {
-      let leftSkin = 0, rightSkin = 0;
-      for (let y = startY; y < endY; y++) {
-        for (let x = startX; x < 160; x++) {
-          const i = (y * 320 + x) * 4;
-          const r = data[i], g = data[i + 1], b = data[i + 2];
-          if (r > 95 && g > 40 && b > 20 && r > g && r > b) leftSkin++;
-        }
-        for (let x = 160; x < endX; x++) {
-          const i = (y * 320 + x) * 4;
-          const r = data[i], g = data[i + 1], b = data[i + 2];
-          if (r > 95 && g > 40 && b > 20 && r > g && r > b) rightSkin++;
-        }
+    noFaceCount = 0;
+
+    if (results.multiFaceLandmarks.length > 1) {
+      lastAlert = now;
+      onViolation({ type: "multiple_faces", severity: VIOLATION_SCORES.multiple_faces, description: "Multiple faces detected in frame", timestamp: new Date() });
+      return;
+    }
+
+    const landmarks = results.multiFaceLandmarks[0];
+    if (!landmarks || landmarks.length < 468) return;
+
+    // Nose tip (landmark 1) position for head direction
+    const noseTip = landmarks[1];
+    // Left eye outer (landmark 33), Right eye outer (landmark 263)
+    const leftEye = landmarks[33];
+    const rightEye = landmarks[263];
+
+    // Iris landmarks (468-477 with refineLandmarks)
+    // Left iris center: 468, Right iris center: 473
+    const leftIris = landmarks[468];
+    const rightIris = landmarks[473];
+
+    if (leftIris && rightIris && leftEye && rightEye) {
+      // Calculate gaze direction based on iris position relative to eye corners
+      const leftEyeInner = landmarks[133];
+      const rightEyeInner = landmarks[362];
+
+      // Horizontal gaze: check if iris is too far left or right within the eye
+      const leftGazeRatio = (leftIris.x - leftEye.x) / (leftEyeInner.x - leftEye.x + 0.001);
+      const rightGazeRatio = (rightIris.x - rightEyeInner.x) / (rightEye.x - rightEyeInner.x + 0.001);
+
+      const avgGaze = (leftGazeRatio + rightGazeRatio) / 2;
+
+      if (avgGaze < 0.2) {
+        lastAlert = now;
+        onViolation({ type: "looking_left", severity: VIOLATION_SCORES.looking_left, description: "Student is looking to the left", timestamp: new Date() });
+        return;
       }
-      const balance = leftSkin / (rightSkin + 1);
-      if ((balance > 3 || balance < 0.33) && Date.now() - lastAlert > 8000) {
-        lastAlert = Date.now();
-        onViolation({ type: "looking_away", severity: VIOLATION_SCORES.looking_away, description: "Student appears to be looking away from screen", timestamp: new Date() });
+      if (avgGaze > 0.8) {
+        lastAlert = now;
+        onViolation({ type: "looking_right", severity: VIOLATION_SCORES.looking_right, description: "Student is looking to the right", timestamp: new Date() });
+        return;
       }
     }
-  }, 1000);
 
-  return () => clearInterval(interval);
+    // Vertical check: if nose tip is too low, looking down
+    if (noseTip.y > 0.7) {
+      lastAlert = now;
+      onViolation({ type: "looking_down", severity: VIOLATION_SCORES.looking_down, description: "Student appears to be looking down", timestamp: new Date() });
+      return;
+    }
+
+    // Head turned too far (nose tip off center)
+    if (noseTip.x < 0.3 || noseTip.x > 0.7) {
+      lastAlert = now;
+      onViolation({ type: "looking_away", severity: VIOLATION_SCORES.looking_away, description: "Student's head is turned away from screen", timestamp: new Date() });
+    }
+  };
+
+  const startDetection = () => {
+    if (!faceMeshReady || !faceMesh) return;
+
+    const sendFrame = async () => {
+      if (!running || !faceMesh) return;
+      if (video.readyState >= 2) {
+        await faceMesh.send({ image: video });
+      }
+      if (running) setTimeout(sendFrame, 1000);
+    };
+    sendFrame();
+  };
+
+  // Fallback: simple canvas-based detection
+  const startFallbackDetection = () => {
+    const interval = setInterval(() => {
+      if (!running || video.readyState < 2) return;
+      canvas.width = 320;
+      canvas.height = 240;
+      ctx.drawImage(video, 0, 0, 320, 240);
+      const imageData = ctx.getImageData(0, 0, 320, 240);
+      const data = imageData.data;
+
+      let skinPixels = 0;
+      const totalPixels = 80 * 60;
+      for (let y = 60; y < 120; y++) {
+        for (let x = 120; x < 200; x++) {
+          const i = (y * 320 + x) * 4;
+          const r = data[i], g = data[i + 1], b = data[i + 2];
+          if (r > 95 && g > 40 && b > 20 && r > g && r > b && Math.abs(r - g) > 15 && r - b > 15) {
+            skinPixels++;
+          }
+        }
+      }
+
+      const skinRatio = skinPixels / totalPixels;
+      const now = Date.now();
+
+      if (skinRatio < 0.05) {
+        noFaceCount++;
+        if (noFaceCount > 5 && now - lastAlert > 10000) {
+          lastAlert = now;
+          noFaceCount = 0;
+          onViolation({ type: "face_not_detected", severity: VIOLATION_SCORES.face_not_detected, description: "No face detected in camera frame", timestamp: new Date() });
+        }
+      } else {
+        noFaceCount = 0;
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  };
+
+  loadMediaPipe();
+
+  return () => {
+    running = false;
+    faceMesh?.close?.();
+  };
 }
 
 // Fullscreen enforcement

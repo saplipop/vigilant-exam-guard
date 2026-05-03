@@ -26,6 +26,7 @@ export type Database = {
           started_at: string | null
           status: string
           student_id: string
+          warnings_count: number
         }
         Insert: {
           answers?: Json | null
@@ -38,6 +39,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           student_id: string
+          warnings_count?: number
         }
         Update: {
           answers?: Json | null
@@ -50,6 +52,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           student_id?: string
+          warnings_count?: number
         }
         Relationships: [
           {
@@ -99,6 +102,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          admin_id: string | null
           avatar_url: string | null
           created_at: string
           email: string
@@ -106,6 +110,7 @@ export type Database = {
           id: string
         }
         Insert: {
+          admin_id?: string | null
           avatar_url?: string | null
           created_at?: string
           email?: string
@@ -113,6 +118,7 @@ export type Database = {
           id: string
         }
         Update: {
+          admin_id?: string | null
           avatar_url?: string | null
           created_at?: string
           email?: string
