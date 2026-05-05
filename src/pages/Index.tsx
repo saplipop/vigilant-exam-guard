@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Shield, Camera, Brain, BarChart3, Lock, Eye } from "lucide-react";
+import { Shield, Camera, Brain, BarChart3, Lock, Eye, UserCog } from "lucide-react";
 
 export default function Index() {
   const { user, loading, role } = useAuth();
@@ -17,6 +17,26 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Top Nav */}
+      <nav className="border-b border-border glass-card sticky top-0 z-50">
+        <div className="container flex items-center justify-between h-14">
+          <div className="flex items-center gap-2">
+            <div className="gradient-primary p-2 rounded-lg">
+              <Shield className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <span className="font-bold text-lg text-foreground">ExamEye</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="sm" onClick={() => navigate("/auth?role=admin")} className="flex items-center gap-2">
+              <UserCog className="h-4 w-4" /> Admin Panel
+            </Button>
+            <Button size="sm" className="gradient-primary text-primary-foreground" onClick={() => navigate("/auth")}>
+              Student Login
+            </Button>
+          </div>
+        </div>
+      </nav>
+
       {/* Hero */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-accent/5" />
@@ -32,7 +52,10 @@ export default function Index() {
           </p>
           <div className="flex gap-4 justify-center animate-fade-in">
             <Button size="lg" className="gradient-primary text-primary-foreground glow-primary text-base px-8" onClick={() => navigate("/auth")}>
-              Sign In
+              Student Login
+            </Button>
+            <Button size="lg" variant="outline" className="text-base px-8" onClick={() => navigate("/auth?role=admin")}>
+              <UserCog className="h-5 w-5 mr-2" /> Admin Login
             </Button>
           </div>
         </div>
