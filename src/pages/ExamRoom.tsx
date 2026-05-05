@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, Clock, ChevronLeft, ChevronRight, Send, Camera, Shield, Lock } from "lucide-react";
+import { AlertTriangle, Clock, ChevronLeft, ChevronRight, Send, Camera, Shield, Lock, Eye, EyeOff, Monitor, Volume2, Clipboard, Maximize, Users } from "lucide-react";
 import {
   Violation, setupTabSwitchDetection, setupCopyPastePrevention,
   setupAudioMonitoring, setupFaceMeshDetection, setupFullscreenDetection,
@@ -51,6 +51,7 @@ export default function ExamRoom() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [showWarning, setShowWarning] = useState(false);
   const [currentWarningMsg, setCurrentWarningMsg] = useState("");
+  const [currentWarningType, setCurrentWarningType] = useState("");
   const [terminated, setTerminated] = useState(false);
   const [locked, setLocked] = useState(false);
   const [webcamAlert, setWebcamAlert] = useState(false);
@@ -136,6 +137,7 @@ export default function ExamRoom() {
         submitExam(true);
       } else {
         setCurrentWarningMsg(v.description);
+        setCurrentWarningType(v.type);
         setShowWarning(true);
       }
     }
@@ -196,16 +198,66 @@ export default function ExamRoom() {
     <div className="min-h-screen bg-background select-none">
       {/* Warning Modal */}
       {showWarning && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <Card className="glass-card max-w-md border-destructive animate-shake">
-            <CardContent className="p-6 text-center">
-              <AlertTriangle className="h-12 w-12 text-warning mx-auto mb-4 animate-pulse" />
-              <h3 className="text-xl font-bold text-foreground mb-2">⚠️ Warning {warningCount}/{MAX_WARNINGS}</h3>
-              <p className="text-muted-foreground mb-2">{currentWarningMsg}</p>
-              <p className="text-sm text-destructive font-semibold mb-4">
-                {MAX_WARNINGS - warningCount} warning{MAX_WARNINGS - warningCount !== 1 ? "s" : ""} remaining before auto-termination
+        <div className="fixed inset-0 z-50 bg-destructive/10 backdrop-blur-sm flex items-center justify-center p-4" key={warningCount}>
+          <Card className="glass-card max-w-lg border-2 border-destructive animate-shake shadow-[0_0_40px_rgba(239,68,68,0.3)]">
+            <CardContent className="p-8 text-center">
+              {/* Pulsing icon ring */}
+              <div className="relative w-20 h-20 mx-auto mb-5">
+                <div className="absolute inset-0 rounded-full bg-destructive/20 animate-ping" />
+                <div className="relative w-20 h-20 rounded-full bg-destructive/10 border-2 border-destructive flex items-center justify-center">
+                  {(() => {
+                    const iconMap: Record<string, React.ReactNode> = {
+                      tab_switch: <Monitor className="h-8 w-8 text-destructive" />,
+                      face_not_detected: <EyeOff className="h-8 w-8 text-destructive" />,
+                      multiple_faces: <Users className="h-8 w-8 text-destructive" />,
+                      looking_left: <Eye className="h-8 w-8 text-destructive" />,
+                      looking_right: <Eye className="h-8 w-8 text-destructive" />,
+                      looking_down: <Eye className="h-8 w-8 text-destructive" />,
+                      looking_away: <Eye className="h-8 w-8 text-destructive" />,
+                      noise_detected: <Volume2 className="h-8 w-8 text-destructive" />,
+                      copy_paste: <Clipboard className="h-8 w-8 text-destructive" />,
+                      fullscreen_exit: <Maximize className="h-8 w-8 text-destructive" />,
+                    };
+                    return iconMap[currentWarningType] || <AlertTriangle className="h-8 w-8 text-destructive" />;
+                  })()}
+                </div>
+              </div>
+
+              {/* Warning count badges */}
+              <h3 className="text-2xl font-bold text-foreground mb-1">⚠️ Warning!</h3>
+              <div className="flex justify-center gap-2 mb-4">
+                {Array.from({ length: MAX_WARNINGS }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`w-10 h-2 rounded-full transition-all ${
+                      i < warningCount ? "bg-destructive" : "bg-muted"
+                    }`}
+                  />
+                ))}
+              </div>
+              <Badge variant="destructive" className="text-sm px-4 py-1 mb-4">
+                {warningCount} of {MAX_WARNINGS} warnings used
+              </Badge>
+
+              {/* Violation reason */}
+              <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 mb-4">
+                <p className="text-xs font-medium text-destructive uppercase tracking-wider mb-1">Detected Violation</p>
+                <p className="text-foreground font-semibold">{currentWarningMsg}</p>
+                <Badge variant="outline" className="mt-2 text-xs">
+                  {currentWarningType.replace(/_/g, " ")}
+                </Badge>
+              </div>
+
+              <p className="text-sm text-destructive font-semibold mb-5">
+                {MAX_WARNINGS - warningCount === 1
+                  ? "🚨 LAST WARNING! Next violation will terminate your exam."
+                  : `${MAX_WARNINGS - warningCount} warning${MAX_WARNINGS - warningCount !== 1 ? "s" : ""} remaining before auto-termination`}
               </p>
-              <Button onClick={() => { setShowWarning(false); requestFullscreen(); }} className="gradient-primary text-primary-foreground">
+
+              <Button
+                onClick={() => { setShowWarning(false); requestFullscreen(); }}
+                className="w-full gradient-primary text-primary-foreground text-base py-5"
+              >
                 I Understand, Continue Exam
               </Button>
             </CardContent>
