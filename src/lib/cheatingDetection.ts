@@ -87,6 +87,11 @@ export function setupFaceMeshDetection(video: HTMLVideoElement, onViolation: (v:
   let noFaceCount = 0;
   let running = true;
 
+  // Sustained gaze tracking: only trigger after 2-3 seconds of continuous deviation
+  let gazeDeviationStart = 0;
+  let gazeDeviationType = "";
+  const GAZE_THRESHOLD_MS = 2500; // 2.5 seconds sustained
+
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d")!;
 
