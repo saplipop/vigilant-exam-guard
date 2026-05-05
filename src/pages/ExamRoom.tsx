@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, Clock, ChevronLeft, ChevronRight, Send, Camera, Shield, Lock } from "lucide-react";
+import { AlertTriangle, Clock, ChevronLeft, ChevronRight, Send, Camera, Shield, Lock, Eye, EyeOff, Monitor, Volume2, Clipboard, Maximize, Users } from "lucide-react";
 import {
   Violation, setupTabSwitchDetection, setupCopyPastePrevention,
   setupAudioMonitoring, setupFaceMeshDetection, setupFullscreenDetection,
