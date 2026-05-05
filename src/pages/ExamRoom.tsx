@@ -53,10 +53,12 @@ export default function ExamRoom() {
   const [currentWarningMsg, setCurrentWarningMsg] = useState("");
   const [terminated, setTerminated] = useState(false);
   const [locked, setLocked] = useState(false);
+  const [webcamAlert, setWebcamAlert] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const warningCountRef = useRef(0);
   const riskScoreRef = useRef(0);
+  const webcamAlertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     loadExam();
