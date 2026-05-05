@@ -51,6 +51,7 @@ export default function ExamRoom() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [showWarning, setShowWarning] = useState(false);
   const [currentWarningMsg, setCurrentWarningMsg] = useState("");
+  const [currentWarningType, setCurrentWarningType] = useState("");
   const [terminated, setTerminated] = useState(false);
   const [locked, setLocked] = useState(false);
   const [webcamAlert, setWebcamAlert] = useState(false);
