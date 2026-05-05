@@ -118,6 +118,11 @@ export default function ExamRoom() {
     riskScoreRef.current = newRisk;
     setRiskScore(newRisk);
 
+    // Flash webcam red
+    setWebcamAlert(true);
+    if (webcamAlertTimerRef.current) clearTimeout(webcamAlertTimerRef.current);
+    webcamAlertTimerRef.current = setTimeout(() => setWebcamAlert(false), 3000);
+
     // Significant violations trigger a warning
     const significantTypes = ["tab_switch", "face_not_detected", "multiple_faces", "looking_away", "looking_left", "looking_right", "looking_down", "fullscreen_exit", "noise_detected"];
     if (significantTypes.includes(v.type)) {
