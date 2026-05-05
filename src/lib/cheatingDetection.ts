@@ -87,6 +87,11 @@ export function setupFaceMeshDetection(video: HTMLVideoElement, onViolation: (v:
   let noFaceCount = 0;
   let running = true;
 
+  // Sustained gaze tracking: only trigger after 2-3 seconds of continuous deviation
+  let gazeDeviationStart = 0;
+  let gazeDeviationType = "";
+  const GAZE_THRESHOLD_MS = 2500; // 2.5 seconds sustained
+
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d")!;
 
@@ -175,39 +180,77 @@ export function setupFaceMeshDetection(video: HTMLVideoElement, onViolation: (v:
     const rightIris = landmarks[473];
 
     if (leftIris && rightIris && leftEye && rightEye) {
-      // Calculate gaze direction based on iris position relative to eye corners
       const leftEyeInner = landmarks[133];
       const rightEyeInner = landmarks[362];
 
-      // Horizontal gaze: check if iris is too far left or right within the eye
       const leftGazeRatio = (leftIris.x - leftEye.x) / (leftEyeInner.x - leftEye.x + 0.001);
       const rightGazeRatio = (rightIris.x - rightEyeInner.x) / (rightEye.x - rightEyeInner.x + 0.001);
-
       const avgGaze = (leftGazeRatio + rightGazeRatio) / 2;
 
-      if (avgGaze < 0.2) {
-        lastAlert = now;
-        onViolation({ type: "looking_left", severity: VIOLATION_SCORES.looking_left, description: "Student is looking to the left", timestamp: new Date() });
-        return;
-      }
-      if (avgGaze > 0.8) {
-        lastAlert = now;
-        onViolation({ type: "looking_right", severity: VIOLATION_SCORES.looking_right, description: "Student is looking to the right", timestamp: new Date() });
-        return;
-      }
-    }
+      let currentDeviation = "";
+      if (avgGaze < 0.2) currentDeviation = "looking_left";
+      else if (avgGaze > 0.8) currentDeviation = "looking_right";
+      else if (noseTip.y > 0.7) currentDeviation = "looking_down";
+      else if (noseTip.x < 0.3 || noseTip.x > 0.7) currentDeviation = "looking_away";
 
-    // Vertical check: if nose tip is too low, looking down
-    if (noseTip.y > 0.7) {
-      lastAlert = now;
-      onViolation({ type: "looking_down", severity: VIOLATION_SCORES.looking_down, description: "Student appears to be looking down", timestamp: new Date() });
+      if (currentDeviation) {
+        if (gazeDeviationType === currentDeviation && gazeDeviationStart > 0) {
+          // Check if sustained long enough
+          if (now - gazeDeviationStart >= GAZE_THRESHOLD_MS && now - lastAlert >= 3000) {
+            lastAlert = now;
+            gazeDeviationStart = 0;
+            const descriptions: Record<string, string> = {
+              looking_left: "Student is looking to the left",
+              looking_right: "Student is looking to the right",
+              looking_down: "Student appears to be looking down",
+              looking_away: "Student's head is turned away from screen",
+            };
+            onViolation({
+              type: currentDeviation,
+              severity: VIOLATION_SCORES[currentDeviation] || 8,
+              description: descriptions[currentDeviation] || "Gaze deviation detected",
+              timestamp: new Date(),
+            });
+          }
+        } else {
+          // Start tracking new deviation
+          gazeDeviationType = currentDeviation;
+          gazeDeviationStart = now;
+        }
+      } else {
+        // Gaze is normal, reset
+        gazeDeviationStart = 0;
+        gazeDeviationType = "";
+      }
       return;
     }
 
-    // Head turned too far (nose tip off center)
-    if (noseTip.x < 0.3 || noseTip.x > 0.7) {
-      lastAlert = now;
-      onViolation({ type: "looking_away", severity: VIOLATION_SCORES.looking_away, description: "Student's head is turned away from screen", timestamp: new Date() });
+    // Fallback head-only check (no iris landmarks)
+    if (noseTip.y > 0.7 && now - lastAlert >= 3000) {
+      if (gazeDeviationType === "looking_down" && gazeDeviationStart > 0) {
+        if (now - gazeDeviationStart >= GAZE_THRESHOLD_MS) {
+          lastAlert = now;
+          gazeDeviationStart = 0;
+          onViolation({ type: "looking_down", severity: VIOLATION_SCORES.looking_down, description: "Student appears to be looking down", timestamp: new Date() });
+        }
+      } else {
+        gazeDeviationType = "looking_down";
+        gazeDeviationStart = now;
+      }
+    } else if ((noseTip.x < 0.3 || noseTip.x > 0.7) && now - lastAlert >= 3000) {
+      if (gazeDeviationType === "looking_away" && gazeDeviationStart > 0) {
+        if (now - gazeDeviationStart >= GAZE_THRESHOLD_MS) {
+          lastAlert = now;
+          gazeDeviationStart = 0;
+          onViolation({ type: "looking_away", severity: VIOLATION_SCORES.looking_away, description: "Student's head is turned away from screen", timestamp: new Date() });
+        }
+      } else {
+        gazeDeviationType = "looking_away";
+        gazeDeviationStart = now;
+      }
+    } else {
+      gazeDeviationStart = 0;
+      gazeDeviationType = "";
     }
   };
 

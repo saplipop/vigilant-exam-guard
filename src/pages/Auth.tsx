@@ -1,14 +1,18 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Shield, Eye, EyeOff, Loader2, UserCog, GraduationCap } from "lucide-react";
 
 export default function Auth() {
+  const [searchParams] = useSearchParams();
+  const [loginRole, setLoginRole] = useState<"student" | "admin">(
+    searchParams.get("role") === "admin" ? "admin" : "student"
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -16,15 +20,30 @@ export default function Auth() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const r = searchParams.get("role");
+    if (r === "admin") setLoginRole("admin");
+  }, [searchParams]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      navigate("/dashboard");
+
+      // Verify role matches
+      const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id).single();
+      const userRole = roleData?.role || "student";
+
+      if (loginRole === "admin" && userRole !== "admin") {
+        await supabase.auth.signOut();
+        throw new Error("This account does not have admin access.");
+      }
+
+      navigate(userRole === "admin" ? "/admin" : "/dashboard");
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({ title: "Login Failed", description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -43,10 +62,40 @@ export default function Auth() {
           </div>
         </div>
 
+        {/* Role Toggle */}
+        <div className="flex rounded-lg border border-border overflow-hidden mb-6">
+          <button
+            onClick={() => setLoginRole("student")}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-all ${
+              loginRole === "student"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <GraduationCap className="h-4 w-4" /> Student
+          </button>
+          <button
+            onClick={() => setLoginRole("admin")}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-all ${
+              loginRole === "admin"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <UserCog className="h-4 w-4" /> Admin
+          </button>
+        </div>
+
         <Card className="glass-card">
           <CardHeader className="text-center">
-            <CardTitle className="text-xl">Welcome Back</CardTitle>
-            <CardDescription>Sign in with your credentials</CardDescription>
+            <CardTitle className="text-xl">
+              {loginRole === "admin" ? "Admin Login" : "Student Login"}
+            </CardTitle>
+            <CardDescription>
+              {loginRole === "admin"
+                ? "Sign in with your admin credentials"
+                : "Sign in with credentials provided by your admin"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -65,11 +114,13 @@ export default function Auth() {
               </div>
               <Button type="submit" className="w-full gradient-primary text-primary-foreground" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Sign In
+                Sign In as {loginRole === "admin" ? "Admin" : "Student"}
               </Button>
             </form>
             <p className="mt-4 text-center text-xs text-muted-foreground">
-              Contact your administrator if you don't have credentials.
+              {loginRole === "student"
+                ? "Contact your administrator if you don't have credentials."
+                : "Only authorized administrators can access the admin panel."}
             </p>
           </CardContent>
         </Card>

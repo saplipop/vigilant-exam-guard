@@ -53,10 +53,12 @@ export default function ExamRoom() {
   const [currentWarningMsg, setCurrentWarningMsg] = useState("");
   const [terminated, setTerminated] = useState(false);
   const [locked, setLocked] = useState(false);
+  const [webcamAlert, setWebcamAlert] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const warningCountRef = useRef(0);
   const riskScoreRef = useRef(0);
+  const webcamAlertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     loadExam();
@@ -115,6 +117,11 @@ export default function ExamRoom() {
     const newRisk = riskScoreRef.current + v.severity;
     riskScoreRef.current = newRisk;
     setRiskScore(newRisk);
+
+    // Flash webcam red
+    setWebcamAlert(true);
+    if (webcamAlertTimerRef.current) clearTimeout(webcamAlertTimerRef.current);
+    webcamAlertTimerRef.current = setTimeout(() => setWebcamAlert(false), 3000);
 
     // Significant violations trigger a warning
     const significantTypes = ["tab_switch", "face_not_detected", "multiple_faces", "looking_away", "looking_left", "looking_right", "looking_down", "fullscreen_exit", "noise_detected"];
@@ -223,9 +230,9 @@ export default function ExamRoom() {
             <Clock className="h-4 w-4 text-muted-foreground" />
             <span className={timeLeft < 300 ? "text-destructive font-bold" : "text-foreground"}>{formatTime(timeLeft)}</span>
           </div>
-          <div className="relative w-20 h-14 rounded-lg overflow-hidden border border-border">
+          <div className={`relative w-20 h-14 rounded-lg overflow-hidden border-2 transition-all duration-300 ${webcamAlert ? "border-destructive shadow-[0_0_12px_rgba(239,68,68,0.7)]" : "border-border"}`}>
             <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-            <div className="absolute top-1 right-1"><Camera className="h-3 w-3 text-accent" /></div>
+            <div className="absolute top-1 right-1"><Camera className={`h-3 w-3 ${webcamAlert ? "text-destructive animate-pulse" : "text-accent"}`} /></div>
           </div>
         </div>
       </div>
