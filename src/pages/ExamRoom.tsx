@@ -137,6 +137,7 @@ export default function ExamRoom() {
         submitExam(true);
       } else {
         setCurrentWarningMsg(v.description);
+        setCurrentWarningType(v.type);
         setShowWarning(true);
       }
     }
