@@ -230,9 +230,9 @@ export default function ExamRoom() {
             <Clock className="h-4 w-4 text-muted-foreground" />
             <span className={timeLeft < 300 ? "text-destructive font-bold" : "text-foreground"}>{formatTime(timeLeft)}</span>
           </div>
-          <div className="relative w-20 h-14 rounded-lg overflow-hidden border border-border">
+          <div className={`relative w-20 h-14 rounded-lg overflow-hidden border-2 transition-all duration-300 ${webcamAlert ? "border-destructive shadow-[0_0_12px_rgba(239,68,68,0.7)]" : "border-border"}`}>
             <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-            <div className="absolute top-1 right-1"><Camera className="h-3 w-3 text-accent" /></div>
+            <div className="absolute top-1 right-1"><Camera className={`h-3 w-3 ${webcamAlert ? "text-destructive animate-pulse" : "text-accent"}`} /></div>
           </div>
         </div>
       </div>
